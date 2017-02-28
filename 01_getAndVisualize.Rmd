@@ -1,0 +1,46 @@
+---
+title: "Measles incidence per million inhabitants in 2015"
+author: "Duc-Quang Nguyen | swissinfo.ch"
+date: " 2017"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: simplex
+---
+
+```{r setup, include=FALSE}
+data.file <- "input/measles_who_2015.csv"
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(countrycode)
+library(ggplot2)
+library(scales)
+library(swiMap)
+library(swiTheme)
+
+library(WDI)
+```
+
+```{r data load}
+data.read <- read_csv(data.file) %>% rename (measles = `2015`) %>% filter(!is.na(measles))
+data.read$iso2c <- countrycode(data.read[,1] %>% unlist(use.names = F), "iso3c", "iso2c") 
+
+# get country population in 2015
+wb <- WDI(data.read$iso2c, indicator = "SP.POP.TOTL", start = 2015, end = 2015) %>% 
+  select(-year, -country) %>% rename(pop = `SP.POP.TOTL`)
+data <- right_join(data.read, wb)
+data$incidence <- round((data$measles / data$pop) * 10^6, 1)
+if(any(is.na(data$incidence))) {
+  data <- data[-which(is.na(data$incidence)),]
+}
+# reorder data.frame with country translations
+data %<>% select(-Cname, -iso2c, - pop)
+
+countries <- countryTranslation(data[,1] %>% unlist(use.names = F), output = c("EN", "DE", "FR", "IT", "ES", "PT","RU", "ZH", "JA","AR"))[,-1]
+data <- cbind(data, countries)
+write.csv(data, file = "input/measles_incidence_2015_who.csv", row.names = F)
+```

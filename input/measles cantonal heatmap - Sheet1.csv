@@ -1,7 +1,7 @@
 code,EN,FR,DE,IT,PT,AR,RU,ES,JA,ZH
-main.title,A fail attempt to eradicate measles,,,,,,,,,
-descr,"Measles cases for the whole of Switzerland and by cantons. Cantons are grouped by their predominent spoken language (German, French, Italian) and sorted by decreasing population within each language group. For 2017, only declared cases until the 22nd of February are shown. ","La rougeole est considérée comme éradiquée lorsqu'un cas sur une population d'un million de personnes est signalé. Soit, pour la Suisse, un maximum de 8 malades par an.",,,,,,,,
-h3,"Measles incidence in Switzerland, per canton and per million inhabitants, 1999-2017",,,,,,,,,
+main.title,Failed attempts to eradicate measles,,,,,,,,,
+descr,"Measles cases for the whole of Switzerland and by cantons. Cantons are grouped by their predominent spoken language (German, French, Italian) and sorted by decreasing population within each language group. For 2017, only declared cases until the 22nd of February are shown. ",,,,,,,,,
+h3,"Yearly measles incidence in Switzerland, per canton and per million inhabitants, 1999-2017",,,,,,,,,
 tp.1,cases,,,,,,,,,
 tp.2,per million inhabitants,,,,,,,,,
 source,Source,source,Quelle,Fonte,fonte,المصدر,Источник,Fuente,出典,来源

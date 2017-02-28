@@ -96,67 +96,68 @@ dat <- rbind(cbind(ch, lang = "aa"), ct)
 
 
 
-lang <- 'EN'
-# for(lang in colnames(txt)) {
-#   
-# }
-
-dd <- dat
-
-# get tranlsation and order canton 
-dd$label <- suppressWarnings(canton_namesStrict(as.character(dd$canton), "eng"))
-dd$canton <- as.character(dd$canton)
-dd[which(dd$canton == 'CH'), c('canton', 'label')] <- countryTranslation("CH", lang)[-1]
-dd$canton <- factor(dd$canton, levels = c(countryTranslation("CH", lang)[-1], canton_ordered))
+#lang <- 'EN'
+for(lang in colnames(txt)) {
+  dd <- dat
   
-footer <- paste0(
+  # get tranlsation and order canton 
+  lang.ct <- switch(lang, 'EN' = 'eng', 'FR' = 'french1', 'DE' = 'german1', 'IT' = 'ita', 'PT' = 'por', 'AR' = 'ara', 'RU' = 'rus', 'ES' = 'spa', 'JA' = 'jpn', 'ZH' = 'chi')
+  dd$label <- suppressWarnings(canton_namesStrict(as.character(dd$canton), lang.ct))
+  
+  dd$canton <- as.character(dd$canton)
+  dd[which(dd$canton == 'CH'), c('canton', 'label')] <- countryTranslation("CH", lang)[-1]
+  dd$canton <- factor(dd$canton, levels = c(countryTranslation("CH", lang)[-1], canton_ordered))
+  
+  footer <- paste0(
     txt['source', lang], ": ", htmlLink(txt['source.url', lang], txt['source.name', lang]), " | ",
     #txt['code', lang], ": ", htmlLink(txt['code.url', lang], txt['code.name', lang]), " | ",
+    htmlLink("https://twitter.com/duc_qn", '@duc_qn'),  " | ",           
     htmlLink("http://www.swissinfo.ch", 'swissinfo.ch')               
   )
-
-
-ch.line <- list(
-  color = "#2F343B", value = 0.5, width = 1.1, zIndex = 5)
-de.line <- list(
-  color = "#BDB198", value = 19.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
-fr.line <- list(
-  color = "#BDB198", value = 25.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
-
-hc <- hchart(dd, "heatmap", 
-             hcaes(x = year, y = canton, value = incidence, group = label, abs = case)) %>% 
-  #hc_chart(marginRight = 2) %>% 
-  hc_colorAxis(minColor = "#f7eded", maxColor = "#481f1e", type = "logarithmic") %>% 
-  hc_legend(layout = "horizontal", verticalAlign = "top",
-            align = "center", valueDecimals = 0, x = -10) %>%
-  hc_yAxis(plotLines = list(ch.line, de.line, fr.line)) %>%
+  
+  ch.line <- list(
+    color = "#2F343B", value = 0.5, width = 1.1, zIndex = 5)
+  de.line <- list(
+    color = "#BDB198", value = 19.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+  fr.line <- list(
+    color = "#BDB198", value = 25.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+  
+  hc <- hchart(dd, "heatmap", 
+               hcaes(x = year, y = canton, value = incidence, group = label, abs = case)) %>% 
+    #hc_chart(marginRight = 2) %>% 
+    hc_colorAxis(minColor = "#f7eded", maxColor = "#481f1e", type = "logarithmic") %>% 
+    hc_legend(layout = "horizontal", verticalAlign = "top", width =  90, padding = 0,
+              align = "center", valueDecimals = 0, x = -20, rtl = ifelse(lang == "AR", T, F), reversed = ifelse(lang == "AR", T, F)) %>%
+    hc_yAxis(plotLines = list(ch.line, de.line, fr.line)) %>%
     hc_tooltip(
       borderRadius = 10, useHTML = T,
       pointFormat = paste0("<h4>{point.name}</h4><small>{point.x}, <b>{point.abs}</b> ", 
                            txt['tp.1', lang], " (<b>{point.value:,.0f}</b> ", txt['tp.2', lang], ")</small>")
-  ) %>% hc_add_theme(hc_theme_swi) %>%
-   hc_yAxis(reversed = TRUE, offset = -5, tickLength = 0, lineWidth = 0,
-           gridLineWidth = 0, minorGridLineWidth = 0,
-           title = list(text = ""), labels = list(y = 4, style = list(fontSize = "12px"))) %>%
-   hc_xAxis(lineWidth = 0, title = list(text = ""), opposite = T) %>% 
-  hc_size(height = 560)
-
-
-
-save_html(
-  tags$html(
-    tags$head(includeHTML(style_swi_highcharter())),
-    tags$body(    
-      tags$h2(txt['main.title', lang]),
-      div(class = "descr", HTML(txt['descr', lang])),
-      tags$h3(txt['h3', lang]),
-      div(class="graphic", hc),
-      div(id = "cite", HTML(footer)),
-      HTML(iframeresizer)
-    )
-  ), file = paste0("measles_cantonal_heatmap_", lang, ".html"), libdir = "js"
-)     
+    ) %>% hc_add_theme(hc_theme_swi) %>%
+    hc_yAxis(reversed = TRUE, offset = -5, tickLength = 0, lineWidth = 0,
+             gridLineWidth = 0, minorGridLineWidth = 0,
+             title = list(text = ""), labels = list(y = 4, style = list(fontSize = "12px")),
+             opposite = ifelse(lang == "AR", T, F)) %>%
+    hc_xAxis(lineWidth = 0, title = list(text = ""), opposite = ifelse(lang == "AR", T, F)) %>% 
+    hc_size(height = 560)
   
+  save_html(
+    tags$html(
+      tags$head(includeHTML(style_swi_highcharter())),
+      tags$body(    
+        tags$h2(txt['main.title', lang]),
+        div(class = "descr", HTML(txt['descr', lang])),
+        tags$h3(txt['h3', lang]),
+        div(class="graphic", hc),
+        div(id = "cite", HTML(footer)),
+        HTML(iframeresizer)
+      )
+    ), file = paste0("measles_cantonal_heatmap_", lang, ".html"), libdir = "js"
+  )     
+  
+}
+
+
 
 
 ```

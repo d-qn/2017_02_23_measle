@@ -179,66 +179,66 @@ dat &lt;- rbind(cbind(ch, lang = &quot;aa&quot;), ct)
 
 
 
-lang &lt;- 'EN'
-# for(lang in colnames(txt)) {
-#   
-# }
-
-dd &lt;- dat
-
-# get tranlsation and order canton 
-dd$label &lt;- suppressWarnings(canton_namesStrict(as.character(dd$canton), &quot;eng&quot;))
-dd$canton &lt;- as.character(dd$canton)
-dd[which(dd$canton == 'CH'), c('canton', 'label')] &lt;- countryTranslation(&quot;CH&quot;, lang)[-1]
-dd$canton &lt;- factor(dd$canton, levels = c(countryTranslation(&quot;CH&quot;, lang)[-1], canton_ordered))
+#lang &lt;- 'EN'
+for(lang in colnames(txt)) {
+  dd &lt;- dat
   
-footer &lt;- paste0(
+  # get tranlsation and order canton 
+  lang.ct &lt;- switch(lang, 'EN' = 'eng', 'FR' = 'french1', 'DE' = 'german1', 'IT' = 'ita', 'PT' = 'por', 'AR' = 'ara', 'RU' = 'rus', 'ES' = 'spa', 'JA' = 'jpn', 'ZH' = 'chi')
+  dd$label &lt;- suppressWarnings(canton_namesStrict(as.character(dd$canton), lang.ct))
+  
+  dd$canton &lt;- as.character(dd$canton)
+  dd[which(dd$canton == 'CH'), c('canton', 'label')] &lt;- countryTranslation(&quot;CH&quot;, lang)[-1]
+  dd$canton &lt;- factor(dd$canton, levels = c(countryTranslation(&quot;CH&quot;, lang)[-1], canton_ordered))
+  
+  footer &lt;- paste0(
     txt['source', lang], &quot;: &quot;, htmlLink(txt['source.url', lang], txt['source.name', lang]), &quot; | &quot;,
     #txt['code', lang], &quot;: &quot;, htmlLink(txt['code.url', lang], txt['code.name', lang]), &quot; | &quot;,
+    htmlLink(&quot;https://twitter.com/duc_qn&quot;, '@duc_qn'),  &quot; | &quot;,           
     htmlLink(&quot;http://www.swissinfo.ch&quot;, 'swissinfo.ch')               
   )
-
-
-ch.line &lt;- list(
-  color = &quot;#2F343B&quot;, value = 0.5, width = 1.1, zIndex = 5)
-de.line &lt;- list(
-  color = &quot;#BDB198&quot;, value = 19.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
-fr.line &lt;- list(
-  color = &quot;#BDB198&quot;, value = 25.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
-
-hc &lt;- hchart(dd, &quot;heatmap&quot;, 
-             hcaes(x = year, y = canton, value = incidence, group = label, abs = case)) %&gt;% 
-  #hc_chart(marginRight = 2) %&gt;% 
-  hc_colorAxis(minColor = &quot;#f7eded&quot;, maxColor = &quot;#481f1e&quot;, type = &quot;logarithmic&quot;) %&gt;% 
-  hc_legend(layout = &quot;horizontal&quot;, verticalAlign = &quot;top&quot;,
-            align = &quot;center&quot;, valueDecimals = 0, x = -10) %&gt;%
-  hc_yAxis(plotLines = list(ch.line, de.line, fr.line)) %&gt;%
+  
+  ch.line &lt;- list(
+    color = &quot;#2F343B&quot;, value = 0.5, width = 1.1, zIndex = 5)
+  de.line &lt;- list(
+    color = &quot;#BDB198&quot;, value = 19.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+  fr.line &lt;- list(
+    color = &quot;#BDB198&quot;, value = 25.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+  
+  hc &lt;- hchart(dd, &quot;heatmap&quot;, 
+               hcaes(x = year, y = canton, value = incidence, group = label, abs = case)) %&gt;% 
+    #hc_chart(marginRight = 2) %&gt;% 
+    hc_colorAxis(minColor = &quot;#f7eded&quot;, maxColor = &quot;#481f1e&quot;, type = &quot;logarithmic&quot;) %&gt;% 
+    hc_legend(layout = &quot;horizontal&quot;, verticalAlign = &quot;top&quot;, width =  90, padding = 0,
+              align = &quot;center&quot;, valueDecimals = 0, x = -20, rtl = ifelse(lang == &quot;AR&quot;, T, F), reversed = ifelse(lang == &quot;AR&quot;, T, F)) %&gt;%
+    hc_yAxis(plotLines = list(ch.line, de.line, fr.line)) %&gt;%
     hc_tooltip(
       borderRadius = 10, useHTML = T,
       pointFormat = paste0(&quot;&lt;h4&gt;{point.name}&lt;/h4&gt;&lt;small&gt;{point.x}, &lt;b&gt;{point.abs}&lt;/b&gt; &quot;, 
                            txt['tp.1', lang], &quot; (&lt;b&gt;{point.value:,.0f}&lt;/b&gt; &quot;, txt['tp.2', lang], &quot;)&lt;/small&gt;&quot;)
-  ) %&gt;% hc_add_theme(hc_theme_swi) %&gt;%
-   hc_yAxis(reversed = TRUE, offset = -5, tickLength = 0, lineWidth = 0,
-           gridLineWidth = 0, minorGridLineWidth = 0,
-           title = list(text = &quot;&quot;), labels = list(y = 4, style = list(fontSize = &quot;12px&quot;))) %&gt;%
-   hc_xAxis(lineWidth = 0, title = list(text = &quot;&quot;), opposite = T) %&gt;% 
-  hc_size(height = 560)
-
-
-
-save_html(
-  tags$html(
-    tags$head(includeHTML(style_swi_highcharter())),
-    tags$body(    
-      tags$h2(txt['main.title', lang]),
-      div(class = &quot;descr&quot;, HTML(txt['descr', lang])),
-      tags$h3(txt['h3', lang]),
-      div(class=&quot;graphic&quot;, hc),
-      div(id = &quot;cite&quot;, HTML(footer)),
-      HTML(iframeresizer)
-    )
-  ), file = paste0(&quot;measles_cantonal_heatmap_&quot;, lang, &quot;.html&quot;), libdir = &quot;js&quot;
-)     </code></pre>
+    ) %&gt;% hc_add_theme(hc_theme_swi) %&gt;%
+    hc_yAxis(reversed = TRUE, offset = -5, tickLength = 0, lineWidth = 0,
+             gridLineWidth = 0, minorGridLineWidth = 0,
+             title = list(text = &quot;&quot;), labels = list(y = 4, style = list(fontSize = &quot;12px&quot;)),
+             opposite = ifelse(lang == &quot;AR&quot;, T, F)) %&gt;%
+    hc_xAxis(lineWidth = 0, title = list(text = &quot;&quot;), opposite = ifelse(lang == &quot;AR&quot;, T, F)) %&gt;% 
+    hc_size(height = 560)
+  
+  save_html(
+    tags$html(
+      tags$head(includeHTML(style_swi_highcharter())),
+      tags$body(    
+        tags$h2(txt['main.title', lang]),
+        div(class = &quot;descr&quot;, HTML(txt['descr', lang])),
+        tags$h3(txt['h3', lang]),
+        div(class=&quot;graphic&quot;, hc),
+        div(id = &quot;cite&quot;, HTML(footer)),
+        HTML(iframeresizer)
+      )
+    ), file = paste0(&quot;measles_cantonal_heatmap_&quot;, lang, &quot;.html&quot;), libdir = &quot;js&quot;
+  )     
+  
+}</code></pre>
 
 
 
