@@ -1,0 +1,162 @@
+---
+title: ""
+author: "Duc-Quang Nguyen | swissinfo.ch"
+date: " 2016"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: simplex
+---
+
+```{r setup, include=FALSE}
+pop.file <-  "input/canton_population.csv"
+data.file <- "data/DAT_170223_Déclaration obligatoire rougeole_Suisse_1999-2017_Swissinfo.xlsx"
+translation.file <- 'input/measles cantonal heatmap - Sheet1.csv'
+
+
+library(readr)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(countrycode)
+library(ggplot2)
+library(scales)
+library(swiMap)
+library(swiTheme)
+library(forcats)
+
+### Getting data in packages
+library(rvest)
+library(readxl)
+
+
+### Interactive 
+library(htmltools)
+library(swiRcharts)
+library(highcharter)
+require(viridis)
+```
+
+```{r load data}
+txt <- loadTranslation(translation.file)
+
+pop <- read.csv(pop.file)
+
+# load measles data for the whole of Switzerland and by canton
+ch <- read_excel(data.file, 1, skip = 3)
+ct <- read_excel(data.file, 2, skip = 3)
+
+# wrangle ch
+ch %<>% select(-`%`) %>% 
+  rename(case = `N cas déclarés`, year = `Année`, pop = `Population (fin année précédente)`, incidence = `Incidence (n/million habitants)`)
+ch$year <- as.numeric(ch$year)
+ch %<>% filter(!is.na(ch$year))
+ch <- cbind(canton = "CH", ch)
+
+
+# wrangle cantonal data
+ct %<>% rename(canton = Canton) %>% select(-Total)
+ct <- ct[which(nchar(ct$canton) == 2),]
+
+# make data long
+ct <- ct %>% gather(year, case, -canton) 
+ct$year <- as.numeric(ct$year)
+
+pop %<>% rename(year = `Année`, pop = value, canton = iso2) %>%
+  select(canton, year, pop)
+pop$canton <- as.character(pop$canton)
+
+# hack get the canotnal population of 2015 for 2016 & 2017
+pop.tmp <- pop %>% spread(year, pop)
+pop.tmp$`2017` <- pop.tmp$`2016` <- pop.tmp$`2015`
+pop <- pop.tmp %>% gather(year, pop, -canton)
+pop$year <- as.numeric(pop$year)
+
+# join population 
+ct <- left_join(ct, pop)
+# compute incidence
+ct$incidence <- (ct$case / ct$pop) * 10^6
+```
+
+```{r heatmap}
+ct$incidence <- ifelse(ct$incidence == 0, NA, ct$incidence)
+ct$lang <- canton_namesStrict(ct$canton, "lang")
+
+# define the ordering of the cantons by language and population
+canton_ordered <- ct %>% filter(year == 2017) %>% arrange(lang, desc(pop)) %>% 
+  select(canton) %>% unlist(use.names = F)
+#ct$canton <- factor(ct$canton, levels = canton_ordered)
+
+# combine Switzerland and cantonal data
+dat <- rbind(cbind(ch, lang = "aa"), ct)
+
+
+
+
+
+
+lang <- 'EN'
+# for(lang in colnames(txt)) {
+#   
+# }
+
+dd <- dat
+
+# get tranlsation and order canton 
+dd$label <- suppressWarnings(canton_namesStrict(as.character(dd$canton), "eng"))
+dd$canton <- as.character(dd$canton)
+dd[which(dd$canton == 'CH'), c('canton', 'label')] <- countryTranslation("CH", lang)[-1]
+dd$canton <- factor(dd$canton, levels = c(countryTranslation("CH", lang)[-1], canton_ordered))
+  
+footer <- paste0(
+    txt['source', lang], ": ", htmlLink(txt['source.url', lang], txt['source.name', lang]), " | ",
+    #txt['code', lang], ": ", htmlLink(txt['code.url', lang], txt['code.name', lang]), " | ",
+    htmlLink("http://www.swissinfo.ch", 'swissinfo.ch')               
+  )
+
+
+ch.line <- list(
+  color = "#2F343B", value = 0.5, width = 1.1, zIndex = 5)
+de.line <- list(
+  color = "#BDB198", value = 19.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+fr.line <- list(
+  color = "#BDB198", value = 25.5, width = 0.7, zIndex = 5, dashStyle = 'Dash')
+
+hc <- hchart(dd, "heatmap", 
+             hcaes(x = year, y = canton, value = incidence, group = label, abs = case)) %>% 
+  #hc_chart(marginRight = 2) %>% 
+  hc_colorAxis(minColor = "#f7eded", maxColor = "#481f1e", type = "logarithmic") %>% 
+  hc_legend(layout = "horizontal", verticalAlign = "top",
+            align = "center", valueDecimals = 0, x = -10) %>%
+  hc_yAxis(plotLines = list(ch.line, de.line, fr.line)) %>%
+    hc_tooltip(
+      borderRadius = 10, useHTML = T,
+      pointFormat = paste0("<h4>{point.name}</h4><small>{point.x}, <b>{point.abs}</b> ", 
+                           txt['tp.1', lang], " (<b>{point.value:,.0f}</b> ", txt['tp.2', lang], ")</small>")
+  ) %>% hc_add_theme(hc_theme_swi) %>%
+   hc_yAxis(reversed = TRUE, offset = -5, tickLength = 0, lineWidth = 0,
+           gridLineWidth = 0, minorGridLineWidth = 0,
+           title = list(text = ""), labels = list(y = 4, style = list(fontSize = "12px"))) %>%
+   hc_xAxis(lineWidth = 0, title = list(text = ""), opposite = T) %>% 
+  hc_size(height = 560)
+
+
+
+save_html(
+  tags$html(
+    tags$head(includeHTML(style_swi_highcharter())),
+    tags$body(    
+      tags$h2(txt['main.title', lang]),
+      div(class = "descr", HTML(txt['descr', lang])),
+      tags$h3(txt['h3', lang]),
+      div(class="graphic", hc),
+      div(id = "cite", HTML(footer)),
+      HTML(iframeresizer)
+    )
+  ), file = paste0("measles_cantonal_heatmap_", lang, ".html"), libdir = "js"
+)     
+  
+
+
+```

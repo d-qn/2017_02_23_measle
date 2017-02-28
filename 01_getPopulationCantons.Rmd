@@ -1,0 +1,95 @@
+---
+title: ""
+author: "Duc-Quang Nguyen | swissinfo.ch"
+date: " 2016"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: simplex
+---
+
+## Data
+
+* downloaded from [stat-tab](https://www.pxweb.bfs.admin.ch/DownloadFile.aspx?file=px-x-0102020000_201), the interactive stat-tab [page](https://www.pxweb.bfs.admin.ch/Selection.aspx?px_language=fr&px_db=px-x-0102020000_201&px_tableid=px-x-0102020000_201\px-x-0102020000_201.px&px_type=PX)
+
+```{r setup, include=FALSE}
+
+px.file <- "data/px-x-0102020000_201.px"
+
+library(pxR)
+library(readr)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(countrycode)
+library(ggplot2)
+library(scales)
+library(swiMap)
+library(swiTheme)
+
+
+### Getting data in packages
+
+```
+
+```{r canton population}
+
+px.read <- read.px(px.file)
+data <- px.read$DATA[[1]]
+
+
+### Translsate px file!
+
+# get the French terms
+fr <- px.read$VALUES.fr.
+de <- px.read$VALUES
+
+colnames(data)[-ncol(data)] <- rev(names(fr))
+
+## helper to translate PX file
+translate <- function(colname = 'Result.variable', data, fr, de) {
+  # find which colname idx
+  i <- which(names(fr) == colname)
+  # split single string to a string vector
+  translations <- unlist(strsplit(fr[[i]], '", ?"'))
+  stopifnot(length(translations) == length(de[[i]]))
+  
+  # match each term of the data to the levels
+  idx <- match(data[[colname]], de[[i]])
+  stopifnot(all(!is.na(idx)))
+  
+  factor(translations[idx])
+}
+# apply translation
+for(coln in colnames(data)[-ncol(data)]) {
+  data[,coln]<- translate(coln, data, fr, de)
+}
+data.all <- data
+
+### subset
+data$Année <- as.numeric(as.character(data$Année))
+
+data %<>% filter(Sexe == "Sexe - Total", Nationalité == "Nationalité - Total", `Composante.démographique` == 'Effectif au 1er janvier') %>% 
+  select(-Sexe, -Nationalité, -`Composante.démographique`)
+
+# get only the cantons
+data %<>% rename(canton = `Canton.......District........Commune.........`) 
+data <- data[grep("^\\- ", data$canton),]
+data$canton <- gsub("^\\- ", "",  data$canton)
+
+data$canton <- unlist(sapply(data$canton, function(ct) {
+ switch(ct, 
+       "Bern / Berne" = "Berne",
+       "Fribourg / Freiburg" = "Fribourg",
+       "Graubünden / Grigioni / Grischun" = "Grisons",
+       "Valais / Wallis" = "Valais",
+       ct
+       ) 
+}))
+data$iso2 <- canton_namesStrict(data$canton)
+
+data %>% select(-canton)
+write.csv(data %>% select(-canton), file = "input/canton_population.csv", row.names = F)
+
+```
